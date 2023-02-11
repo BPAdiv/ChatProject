@@ -7,10 +7,11 @@ import { ActionContext } from './DataContext';
 import Room from './Room';
 import Message from './Message';
 // Bootstrap CSS
-import "bootstrap/dist/css/bootstrap.min.css";
+// import "bootstrap/dist/css/bootstrap.min.css";
 // Bootstrap Bundle JS
-import "bootstrap/dist/js/bootstrap.bundle.min";
+// import "bootstrap/dist/js/bootstrap.bundle.min";
 import { Col, Container, ListGroup, Nav, Row, Tab } from 'react-bootstrap';
+import Login from './Login';
 
 const socket = io("http://localhost:2000")
 
@@ -31,6 +32,8 @@ function App() {
     setIsTrue(!isTrue)
   }, [messages])
 
+
+  //token verf
   useEffect(() => {
     const loggedInUser = localStorage.getItem("UserId");
     const loggedInToken = localStorage.getItem("token");
@@ -39,23 +42,18 @@ function App() {
     if (loggedInUser && loggedInToken) {
       axios.post("http://localhost:8000/verf", { userId: loggedInUser, token: loggedInToken })
         .then((res) => {
-          // localStorage.setItem("token", res.data.token)
-          // localStorage.setItem("UserId", res.data.data._id)
-
           console.log(res.data);
-          // Next(res.data.data._id)
           setUser(res.data.data);
           setFriends(res.data.allUsers)
-          // setLastCv(res.data.data.cv)
-          // navigate("/form")
         })
         .catch(err => {
-          // navigate("/")
           console.log(err)
         })
-      //   const foundUser = JSON.parse(loggedInUser);
     }
   }, [])
+
+
+  //socket
   useEffect(() => {
     socket.on("connect", () => {
       console.log("connected")
@@ -64,7 +62,8 @@ function App() {
 
       setArrivelMessages({
         sentBy: data.sentBy,
-        text: data.text
+        text: data.text,
+        createdAt: data.createdAt
       })
       console.log(data.text)
     })
@@ -74,6 +73,9 @@ function App() {
     }
   }, [])
 
+
+
+  //new msg from socket
   useEffect(() => {
     if (ArrivelMessages) {
       if (currentRoom?.members?.includes(ArrivelMessages.sentBy)) {
@@ -86,18 +88,15 @@ function App() {
     }
   }, [ArrivelMessages])
 
-
-
-
-  // const [messages, setMessages] = useState([])
+  //set messages
   useEffect(() => {
     setMessages(currentRoom.messages)
     console.log("useEfefct ", messages)
   }, [currentRoom])
 
+
+  //start a conversation
   useEffect(() => {
-
-
     if (user) {
       socket.emit("addUser", user._id)
 
@@ -105,9 +104,6 @@ function App() {
         .then(res => {
           console.log(res.data);
           setConversations(res.data.data)
-          // setFriends(res.data.allUsers)
-          // console.log(res.data.allUsers)
-          // setMessages(res.data.data.messages)
         })
         .catch(err => {
           console.log(err);
@@ -116,23 +112,13 @@ function App() {
   }, [user])
 
 
-
-  function JoinUserRoom(friendUser) {
-    const names = [user.email, friendUser]
-    const Nroom = names.sort().toString()
-    // console.log(room);
-    socket.emit("user-room", Nroom)
-    setCurrentRoom(Nroom)
-    // console.log();
-  }
-
-
+  //add message to socket and to mongo
   function HandleClick() {
     const msg = {
       sentBy: user._id,
-      text: message
+      text: message,
+      createdAt: new Date()
     }
-
     axios.post(`http://localhost:8000/messages/${currentRoom._id}`, msg)
       .then(res => {
         console.log("this is the new message ", res.data.msg)
@@ -140,32 +126,22 @@ function App() {
         currentRoom.messages.push(res.data.msg)
         setCurrentRoom(room)
         setMessages((prev) => [...prev, res.data.msg])
-
-        // setMessages([...messages, res.data.msg])
       })
       .catch(err => console.log(err))
     const recieverId = currentRoom.members.find(mbr => mbr !== user._id)
-    // console.log(currentRoom);
     socket.emit("send-message", {
       userId: user._id,
       recieveId: recieverId,
-      text: message
-
-    })
-    // AddMsg(message)
-  }
-  function AddMsg(msg) {
-    setList((prev) => [...prev, msg])
-  }
-  function HandleRoom() {
-    socket.emit("join-room", room, (roomid) => {
-      AddMsg(`join room ${roomid}`)
+      text: message,
+      createdAt: new Date()
     })
   }
+  //scroll into view
   const scrollRef = useRef()
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
 
   function AddConversation(recieveId) {
     axios.post("http://localhost:8000/conversation", { recieveId: recieveId, senderId: user._id })
@@ -176,6 +152,8 @@ function App() {
       })
       .catch(err => console.log(err))
   }
+
+  //logut
   function Logout() {
     localStorage.setItem("token", "")
     localStorage.setItem("userId", "")
@@ -184,100 +162,155 @@ function App() {
     setConversations([])
     setMessages([])
   }
+
+  const [inputSearch, setInputSearch] = useState("")
+  const [filterSearch, setFilterSearch] = useState([])
+
+  //search field
+  function FilteredFriends(e) {
+    setInputSearch(e.target.value)
+    if (e.target.value == "") {
+      setFilterSearch(friends)
+    } else {
+      const filterFriends = friends.filter(conv => conv?.email?.includes(e.target.value))
+      console.log("this is", filterFriends)
+      setFilterSearch([...filterFriends])
+    }
+  }
+
+  //use stae form who is showeing
+  const [whoIsMain, setWhoIsMain] = useState(true)
+  const [main, setMain] = useState(false)
+  const [drawerIsOpen, setDrawerIsOpen] = useState(false)
+
+  function mainToConv(params) {
+    setWhoIsMain(true)
+    if (!main) {
+      setMain(true)
+    }
+    if (main && whoIsMain) {
+      setMain(false)
+    }
+  }
+  function mainToFriend(params) {
+
+    setWhoIsMain(false)
+    if (!main) {
+      setMain(true)
+    }
+    if (main && !whoIsMain) {
+      setMain(false)
+    }
+  }
   return (
     <div className="App">
-      {/* <div>
-
-        {friends?.map(user =>
-          <button>"adad</button>
-        )}
-      </div> */}
       {user ?
-        <><div>
-          <button onClick={Logout}>Logout</button>
-        </div>
-          {/* <ListGroup variant="flush">
-            {friends.map(user => (
-              <ListGroup.Item key={user._id}>
-                {user.email}
-              </ListGroup.Item>
-            ))}
-          </ListGroup> */}
-          <div>
-            {friends.map(user =>
-              <button onClick={() => AddConversation(user._id)}>{user.email}</button>)}
-          </div>
-          <div>
-            <input type="text" onChange={(e) => setMessage(e.target.value)} />
+        <>
+          <div className='chat-container'>
+            <div className={`sidebar-wrapper  ${main ? "main-width-side" : "mian-width-1"}`}>
+              <div>{user.email}</div>
+              <div onClick={mainToConv}>
+                <img src="/pic/contact.svg" alt="" />
+              </div>
+              <div onClick={mainToFriend}>
+                <img src="/pic/Conv.png" alt="" />
+              </div>
+              <div onClick={Logout} >
+                <img src="/pic/logout.png" alt="" />
+              </div>
+            </div>
+            <div className={`menu-wrapper ${main ? "main-width" : "mian-width-0"}  `} >
+              <div className='menu' >
 
-            <button onClick={HandleClick}>Snd</button>
-          </div>
-          <div >
+                <div className='menu-conv-btn ' style={whoIsMain ? { display: "none" } : { display: "block" }}>
+                  <div className='menu-conv-heading'>
 
-            <Tab.Container id="left-tabs-example" defaultActiveKey="first">
-              <Row>
-                <Col sm={3}>
-                  <Nav variant="pills" className="flex-column">
-                    {conversations.map(conv =>
-                      <Nav.Item>
-                        <Nav.Link eventKey={conv._id}>
-                          <Room conversation={conv} userId={user._id} />
-                        </Nav.Link>
-                      </Nav.Item>
+                    <h3>Contacts</h3>
+                  </div>
+                  <div className='conv--wrapper'>
+                    {
+                      conversations.length ?
+                        conversations.map(conv =>
+                          <div onClick={() => setMain(false)} className={`single-conv ${conv._id == currentRoom._id && "focus-btn"}`} eventKey={conv._id}   >
+                            <Room conversation={conv} userId={user._id} />
+                          </div>
 
-                    )}
-                  </Nav>
-                </Col>
-                <Col sm={9}>
-                  <Tab.Content className='overflow-auto' style={{ height: "50vh" }}>
-                    <div className=' d-flex flex-column align-items-start justify-content-end px-3'>
+                        ) :
+                        <div>No conversations open</div>
+                    }
+                  </div>
+                </div>
+                <div className='menu-friends-wrapper' style={!whoIsMain ? { display: "none" } : { display: "block" }} s>
+                  <div className='friends' >
+                    <div className='friends-heading'>
+                      <h6 style={{ marginTop: "20px" }}>Conversation</h6>
+                      <input type="text" placeholder='Search Friend ' onChange={FilteredFriends} />
+                    </div>
+                    <ul className='friend-users' >
+                      {
+                        inputSearch.length > 0
+                          ?
+                          filterSearch.filter(frnds =>
+                            frnds._id !== user._id)
+                            .map(user =>
+                              <li action onClick={() => {
+                                setMain(false)
+                                AddConversation(user._id)
+                              }}>{user.email}</li>)
+                          :
+                          friends.filter(frnds =>
+                            frnds._id !== user._id)
+                            .map(user =>
+                              <li action onClick={() => {
+                                setMain(false)
+                                AddConversation(user._id)
+                              }}>{user.email}</li>)
+                      }
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className='current-room-wrapper'>
+              <div className='current-room-heading'>
+                <img onClick={() => setMain(true)} src="/pic/left.png" alt="" />
+                {currentRoom.members && <p>{currentRoom?.members[0]}</p>}
+              </div>
+              <div className='current-room'>
+                {
+                  currentRoom?.messages?.length ?
+                    <>
                       {currentRoom?.messages?.map((msg, index) =>
-
-                        <Tab.Pane eventKey={currentRoom._id} className={`my-1 d-flex flex-column ${msg.sentBy == user._id ? 'align-self-end align-items-end' : 'align-items-start'}`}>
-                          {/* <Sonnet /> */}
-                          <div ref={scrollRef} >
+                        <div
+                          className={`single-message `} style={msg.sentBy == user._id ? { alignSelf: "flex-end", alignItems: "flex-end" } : { alignItems: "flex-start" }}>
+                          <div ref={scrollRef}  >
                             <Message msg={msg} messages={messages} user={user} />
                           </div>
-                        </Tab.Pane>
+                        </div>
                       )}
-                    </div>
-
-                    {/* 
-            <Tab.Pane eventKey="first">
-              <Sonnet />
-            </Tab.Pane>
-            <Tab.Pane eventKey="second">
-              <Sonnet />
-            </Tab.Pane> */}
-                  </Tab.Content>
-                </Col>
-              </Row>
-            </Tab.Container>
-
-
-
-            {/* {conversations.map(conv =>
-              <Room conversation={conv} userId={user._id} />
-            )} */}
-          </div>
-
-          {/* <div>
-            {currentRoom?.messages?.map((msg, index) =>
-              <div ref={scrollRef}>
-                <Message msg={msg} messages={messages} />
+                    </>
+                    :
+                    <div>No messages</div>
+                }
               </div>
-            )}
-
-          </div> */}
+              <div className='chat-input'>
+                <div className='chat-input-wrapper'>
+                  <input type="text" onChange={(e) => setMessage(e.target.value)} placeholder="text" />
+                  <button onClick={HandleClick}>Snd</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </>
         :
-        <Container className="align-items-center d-flex justify-content-center " style={{ height: '100vh' }}>
-          <SignUp user={user} setUser={setUser} JoinUserRoom={JoinUserRoom} setFriends={setFriends} />
-        </Container>
-
+        <>
+          <Login
+            user={user}
+            setUser={setUser}
+            setFriends={setFriends} />
+        </>
       }
-
-    </div>
+    </div >
   );
 }
 

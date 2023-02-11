@@ -7,7 +7,6 @@ function Room({ conversation, userId }) {
 
     const [friendUser, setFriendUser] = useState({})
     useEffect(() => {
-
         const friendId = conversation.members.find(user =>
             user !== userId
         )
@@ -19,17 +18,12 @@ function Room({ conversation, userId }) {
             .catch(err => {
                 console.log(err)
             })
-
-
-
-
+        console.log(conversation)
     }, [conversation, userId])
-    // console.log(currentRoom)
 
     return (
-        <div>
-            <button onClick={() => setCurrentRoom(conversation)} >{friendUser.email}</button >
-            <button >{friendUser._id}</button >
+        <div onClick={() => setCurrentRoom(conversation)}>
+            <div  >{friendUser.email}   :<span>{conversation?.messages[conversation?.messages?.length - 1]?.text}</span></div >
         </div>
     )
 }

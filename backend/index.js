@@ -30,15 +30,19 @@ io.on('connection', (socket) => {
     })
 
     console.log(socket, "connected");
-    socket.on("send-message", ({ userId, recieveId, text }) => {
+    socket.on("send-message", ({ userId, recieveId, text, createdAt }) => {
         console.log("this reciver ,", recieveId);
         const reciever = getUser(recieveId)
         console.log(" this recivers ", reciever);
         console.log("this users ,", users);
-        io.to(reciever.socketId).emit("getMsg", {
-            text: text,
-            sentBy: userId
-        })
+        if (reciever?.socketId) {
+
+            io.to(reciever?.socketId).emit("getMsg", {
+                text: text,
+                sentBy: userId,
+                createdAt: createdAt
+            })
+        }
         // console.log(message);
         // if (room == "") {
         //     socket.broadcast.emit("recieve-message", message)
@@ -91,6 +95,7 @@ app.post("/login", authController.login) //if someone on "http:.../register" do 
 app.post("/verf", authController.verf) //if someone on "http:.../register" do the functions.
 
 //chat
+app.post("/groupConv", conversationController.addGroupConv)
 app.post("/conversation", conversationController.AddConv)
 app.get("/conversation/:id", conversationController.getConv)
 app.get("/friend/:friendId", conversationController.getFriendUser)

@@ -49,6 +49,9 @@ function SignUp({ user, setUser, JoinUserRoom, setFriends }) {
                 localStorage.setItem("UserId", res.data.data._id)
 
                 console.log(res.data.data);
+                setUser(res.data.data)
+                setFriends(res.data.allUsers)
+
                 // Next(res.data.data._id)
             })
             .catch(err => console.log(err))
@@ -80,7 +83,7 @@ function SignUp({ user, setUser, JoinUserRoom, setFriends }) {
 
 
     return (
-        <Container className="border border-dark align-items-center justify-content-center d-flex flex-column shadow w-25 gap-5 p-5 pr-5 pl-5 rounded " >
+        <Container style={{width:"30rem"}} className="sign-login border border-dark align-items-center justify-content-center d-flex flex-column shadow  gap-5 p-5 pr-5 pl-5 rounded " >
             <Form onSubmit={SignUpUser} className="w-100 ">
                 <Form.Group>
                     <Form.Label className='fs-2'>Sign In</Form.Label>
